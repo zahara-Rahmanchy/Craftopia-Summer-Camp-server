@@ -26,12 +26,18 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
+    const usersCollection = client.db("Craftopia").collection("users");
+
     await client.db("admin").command({ping: 1});
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
 
     // users collection:all student,instructor,admin:viewed to admin only
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = {email: user.email};
