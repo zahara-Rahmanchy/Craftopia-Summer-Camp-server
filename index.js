@@ -30,6 +30,20 @@ async function run() {
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
     );
+
+    // users collection:all student,instructor,admin:viewed to admin only
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      const query = {email: user.email};
+      const existingUser = await usersCollection.findOne(query);
+      console.log("user", user);
+      console.log("existingUser:  ", existingUser);
+      if (existingUser) {
+        return res.send({message: "The User already exits"});
+      }
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
