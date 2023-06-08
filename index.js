@@ -57,28 +57,74 @@ async function run() {
     // jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
-      console.log("jwt user", user);
+      // console.log("jwt user", user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: "2h",
       });
       res.send({token});
     });
 
+    // creating the verify admin middleware
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== "admin") {
+        return res.status(403).send({error: true, message: "Forbidden access"});
+      }
+      next();
+    };
+    // --------------------------------------------------------------------------------------
     // users collection:all student,instructor,admin:viewed to admin only
-    app.get("/users", verifyJWT, async (req, res) => {
+    app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
+
     app.post("/users", async (req, res) => {
       const user = req.body;
       const query = {email: user.email};
       const existingUser = await usersCollection.findOne(query);
-      console.log("user", user);
-      console.log("existingUser:  ", existingUser);
+      // console.log("user", user);
+      // console.log("existingUser:  ", existingUser);
       if (existingUser) {
         return res.send({message: "The User already exits"});
       }
       const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    // update user role,only admin can so verify jwt and verify admin
+
+    app.patch("/users/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const role = req.body.role;
+      const clicked = req.body.clicked;
+      console.log("role", role);
+      const query = {_id: new ObjectId(id)};
+
+      const updatedDoc = {
+        $set: {
+          role: role,
+          clicked: clicked,
+        },
+      };
+
+      const result = await usersCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+
+    //  CHECK ADMIN to get data using email--------------------------------------------------------------------------
+    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = {email: email};
+
+      if (req.decoded.email !== email) {
+        res.send({admin: false});
+      }
+      const user = await usersCollection.findOne(query);
+      const result = {admin: user?.role === "admin"};
       res.send(result);
     });
   } finally {
