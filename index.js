@@ -75,6 +75,18 @@ async function run() {
       }
       next();
     };
+    // -----------------------------------------------VERIFY instructor middleware-----------------------------------------------------------------
+    const verifyInstructor = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = {email: email};
+      const user = await usersCollection.findOne(query);
+
+      if (user?.role !== "instructor") {
+        return res.status(403).send({error: true, message: "Forbidden access"});
+      }
+      next();
+    };
+
     // --------------------------------------------------------------------------------------
     // users collection:all student,instructor,admin:viewed to admin only
     app.get("/users", verifyJWT, verifyAdmin, async (req, res) => {
@@ -125,6 +137,19 @@ async function run() {
       }
       const user = await usersCollection.findOne(query);
       const result = {admin: user?.role === "admin"};
+      res.send(result);
+    });
+
+    // ------------------------------------------------Instructors--------------------------------------------------------------------------------
+    app.get("/users/instructor/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const query = {email: email};
+
+      if (req.decoded.email !== email) {
+        res.send({instructor: false});
+      }
+      const user = await usersCollection.findOne(query);
+      const result = {instructor: user?.role === "instructor"};
       res.send(result);
     });
   } finally {
