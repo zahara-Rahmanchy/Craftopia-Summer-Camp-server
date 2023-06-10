@@ -49,6 +49,7 @@ async function run() {
     await client.connect();
 
     const usersCollection = client.db("Craftopia").collection("users");
+    const classCollection = client.db("Craftopia").collection("classes");
 
     await client.db("admin").command({ping: 1});
     console.log(
@@ -59,7 +60,7 @@ async function run() {
       const user = req.body;
       // console.log("jwt user", user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "2h",
+        expiresIn: "1h",
       });
       res.send({token});
     });
@@ -127,7 +128,7 @@ async function run() {
       res.send(result);
     });
 
-    //  CHECK ADMIN to get data using email--------------------------------------------------------------------------
+    //-------------------------------------  CHECK ADMIN to get data using email--------------------------------------------------------------------------
     app.get("/users/admin/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = {email: email};
@@ -150,6 +151,18 @@ async function run() {
       }
       const user = await usersCollection.findOne(query);
       const result = {instructor: user?.role === "instructor"};
+      res.send(result);
+    });
+
+    // ------------------------------------------Classes for instructor----------------------------------------------------------
+    app.post("/class", verifyJWT, verifyInstructor, async (req, res) => {
+      const newItem = req.body;
+      const result = await classCollection.insertOne(newItem);
+      res.send(result);
+    });
+
+    app.get("/class", verifyJWT, verifyInstructor, async (req, res) => {
+      const result = await classCollection.find().toArray();
       res.send(result);
     });
   } finally {
