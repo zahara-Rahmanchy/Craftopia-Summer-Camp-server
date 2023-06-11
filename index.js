@@ -7,7 +7,13 @@ const jwt = require("jsonwebtoken");
 const {MongoClient, ServerApiVersion, ObjectId} = require("mongodb");
 
 // middleware
-app.use(cors());
+const corsOptions = {
+  origin: "*",
+  credentials: true,
+  optionSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // jwt
@@ -46,7 +52,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const usersCollection = client.db("Craftopia").collection("users");
     const classCollection = client.db("Craftopia").collection("classes");
@@ -155,14 +161,77 @@ async function run() {
     });
 
     // ------------------------------------------Classes for instructor----------------------------------------------------------
-    app.post("/class", verifyJWT, verifyInstructor, async (req, res) => {
-      const newItem = req.body;
-      const result = await classCollection.insertOne(newItem);
+    app.post(
+      "/class",
+      cors(),
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const newItem = req.body;
+        const result = await classCollection.insertOne(newItem);
+        res.send(result);
+      }
+    );
+    // shows instructor the classes added by using email
+    app.get(
+      "/class/instructor/:email",
+      verifyJWT,
+      verifyInstructor,
+      async (req, res) => {
+        const email = req.params.email; // Get the email from the route parameters
+        const result = await classCollection.find({email: email}).toArray(); // Fetch classes based on the email
+        res.send(result);
+      }
+    );
+
+    // ------------------------------------------Get all instructors for insturtor page---------------------------------------------
+    app.get("/instructors", async (req, res) => {
+      const result = await usersCollection.find({role: "instructor"}).toArray();
+      res.send(result);
+    });
+    // ----------------------------------------Admin manage classes--------------------------------------------
+    app.get("/class", verifyJWT, verifyAdmin, async (req, res) => {
+      const result = await classCollection.find().toArray();
       res.send(result);
     });
 
-    app.get("/class", verifyJWT, verifyInstructor, async (req, res) => {
-      const result = await classCollection.find().toArray();
+    // -----------------------------------------Admin updating the class status--------------------------------------------------------
+
+    app.patch("/class/:id", verifyJWT, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const {status, clicked, feedback} = req.body;
+      const updatedDoc = {
+        $set: {},
+      };
+
+      if (status) {
+        updatedDoc.$set.status = status;
+      }
+
+      if (clicked) {
+        updatedDoc.$set.clicked = clicked;
+      }
+
+      if (feedback) {
+        updatedDoc.$set.feedback = feedback;
+      }
+      console.log("status", status);
+      const query = {_id: new ObjectId(id)};
+
+      // const updatedDoc = {
+      //   $set: {
+      //     status: status,
+      //     clicked: clicked,
+      //   },
+      // };
+
+      const result = await classCollection.updateOne(query, updatedDoc);
+      res.send(result);
+    });
+
+    // ------------------------------Approved classes------------------------------------------------
+    app.get("/classes", async (req, res) => {
+      const result = await classCollection.find({status: "approved"}).toArray();
       res.send(result);
     });
   } finally {
