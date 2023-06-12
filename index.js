@@ -333,6 +333,7 @@ async function run() {
       const result = await classCollection
         .find({status: "approved"})
         .sort({totalEnrolled: -1})
+        .limit(6)
         .toArray();
       res.send(result);
     });
