@@ -319,6 +319,14 @@ async function run() {
 
       res.send({result, deleteResult, updateResult});
     });
+
+    // ------------------------------------Enrolled classes after payment---------------------------------------------------------------------
+
+    app.get("/payments/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      const result = await paymentsCollection.find({email: email}).toArray();
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
