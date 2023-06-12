@@ -295,8 +295,29 @@ async function run() {
           {classId: new ObjectId(req.body.classId)},
         ],
       };
+
+      // =----------------------------------------fetch the data using findOne and update from classes------------------------------
+      const clas = await classCollection.findOne({
+        _id: new ObjectId(req.body.classId),
+      });
+      console.log(clas);
+      const currentAvailableSeats = clas.availableSeat;
+      const totalEnrolled = clas.totalEnrolled;
+      console.log(currentAvailableSeats, totalEnrolled);
+      const updateFilter = {_id: new ObjectId(req.body.classId)};
+      const updateDoc = {
+        $set: {
+          availableSeat: currentAvailableSeats - 1,
+          totalEnrolled: totalEnrolled + 1,
+        },
+      };
       const deleteResult = await selectedClassCollection.deleteOne(del);
-      res.send({result, deleteResult});
+      const updateResult = await classCollection.updateOne(
+        updateFilter,
+        updateDoc
+      );
+
+      res.send({result, deleteResult, updateResult});
     });
   } finally {
     // Ensures that the client will close when you finish/error
