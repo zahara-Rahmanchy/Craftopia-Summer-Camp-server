@@ -61,6 +61,9 @@ async function run() {
     const selectedClassCollection = client
       .db("Craftopia")
       .collection("selectedClasses");
+
+    const paymentsCollection = client.db("Craftopia").collection("payment");
+
     await client.db("admin").command({ping: 1});
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -277,6 +280,14 @@ async function run() {
       res.send({
         clientSecret: paymentIntent.client_secret,
       });
+    });
+
+    // -----------------------------------------payment history-----------------------------------------------
+
+    app.post("/payments", verifyJWT, async (req, res) => {
+      const q = req.body;
+      const result = await paymentsCollection.insertOne(q);
+      res.send(result);
     });
   } finally {
     // Ensures that the client will close when you finish/error
