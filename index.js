@@ -3,6 +3,7 @@ const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET);
 const jwt = require("jsonwebtoken");
 const {MongoClient, ServerApiVersion, ObjectId} = require("mongodb");
 
@@ -11,6 +12,7 @@ const corsOptions = {
   origin: "*",
   credentials: true,
   optionSuccessStatus: 200,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
 };
 
 app.use(cors(corsOptions));
@@ -56,7 +58,9 @@ async function run() {
 
     const usersCollection = client.db("Craftopia").collection("users");
     const classCollection = client.db("Craftopia").collection("classes");
-
+    const selectedClassCollection = client
+      .db("Craftopia")
+      .collection("selectedClasses");
     await client.db("admin").command({ping: 1});
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -233,6 +237,46 @@ async function run() {
     app.get("/classes", async (req, res) => {
       const result = await classCollection.find({status: "approved"}).toArray();
       res.send(result);
+    });
+    // -----------------------------------insert  selected class-------------------------------------------------------
+    app.post(
+      "/selectedClass",
+      verifyJWT,
+
+      async (req, res) => {
+        const newItem = req.body;
+        console.log(newItem);
+        const result = await selectedClassCollection.insertOne(newItem);
+        res.send(result);
+      }
+    );
+
+    app.get("/selectedClass", verifyJWT, async (req, res) => {
+      const result = await selectedClassCollection.find().toArray();
+      res.send(result);
+    });
+    app.delete("/selectedClass/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+
+      const query = {$or: [{_id: id}, {_id: new ObjectId(id)}]};
+      const result = await selectedClassCollection.deleteOne(query);
+      console.log("query", query, "result", result);
+      res.send(result);
+    });
+
+    // ------------PAyment----------------------------------
+    app.post("/create-payment-intent", verifyJWT, async (req, res) => {
+      const {price} = req.body;
+      // convert the amount to pennies
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
     });
   } finally {
     // Ensures that the client will close when you finish/error
