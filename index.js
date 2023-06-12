@@ -287,7 +287,16 @@ async function run() {
     app.post("/payments", verifyJWT, async (req, res) => {
       const q = req.body;
       const result = await paymentsCollection.insertOne(q);
-      res.send(result);
+      console.log(req.body.classId);
+      // delete from selected class using _id
+      const del = {
+        $or: [
+          {classId: req.body.classId},
+          {classId: new ObjectId(req.body.classId)},
+        ],
+      };
+      const deleteResult = await selectedClassCollection.deleteOne(del);
+      res.send({result, deleteResult});
     });
   } finally {
     // Ensures that the client will close when you finish/error
