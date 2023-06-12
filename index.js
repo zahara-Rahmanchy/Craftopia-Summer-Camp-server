@@ -64,10 +64,6 @@ async function run() {
 
     const paymentsCollection = client.db("Craftopia").collection("payment");
 
-    await client.db("admin").command({ping: 1});
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
     // jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -320,13 +316,31 @@ async function run() {
       res.send({result, deleteResult, updateResult});
     });
 
-    // ------------------------------------Enrolled classes after payment---------------------------------------------------------------------
+    // ------------------------------------Enrolled classes after payment and payment history---------------------------------------------------------------------
 
     app.get("/payments/:email", verifyJWT, async (req, res) => {
       const email = req.params.email;
-      const result = await paymentsCollection.find({email: email}).toArray();
+      const result = await paymentsCollection
+        .find({email: email})
+        .sort({date: -1})
+        .toArray();
       res.send(result);
     });
+
+    // -----------------------------------------classes based on students--------------------------------------------------------------------
+
+    app.get("/classessorted", async (req, res) => {
+      const result = await classCollection
+        .find({status: "approved"})
+        .sort({totalEnrolled: -1})
+        .toArray();
+      res.send(result);
+    });
+
+    await client.db("admin").command({ping: 1});
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
